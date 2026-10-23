@@ -285,3 +285,81 @@ export const changePassword = async (req, res, next) => {
     next(error);
   }
 };
+
+export const firebaseLogin = async (req, res, next) => {
+  try {
+    const { name, email, avatar, uid } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required from Firebase authentication.',
+      });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+
+    if (isConnected) {
+      let user = await User.findOne({ email: cleanEmail });
+
+      if (!user) {
+        const generatedPassword = `fb_${uid || Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
+        user = await User.create({
+          name: name || cleanEmail.split('@')[0],
+          email: cleanEmail,
+          password: generatedPassword,
+          avatar: avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+          role: cleanEmail === 'admin@roamvista.com' ? 'admin' : 'user',
+        });
+      } else if (avatar && (!user.avatar || user.avatar.includes('unsplash'))) {
+        user.avatar = avatar;
+        if (name && !user.name) user.name = name;
+        await user.save();
+      }
+
+      const token = generateToken(user._id);
+
+      return res.status(200).json({
+        success: true,
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          avatar: user.avatar,
+          phone: user.phone,
+          bio: user.bio,
+        },
+      });
+    }
+
+    // In-memory fallback
+    let user = memoryStore.findUserByEmail(cleanEmail);
+    if (!user) {
+      user = await memoryStore.createUser({
+        name: name || cleanEmail.split('@')[0],
+        email: cleanEmail,
+        password: `fb_${Date.now()}`,
+        role: cleanEmail === 'admin@roamvista.com' ? 'admin' : 'user',
+      });
+      if (avatar) user.avatar = avatar;
+    }
+
+    const token = generateToken(user._id);
+    return res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

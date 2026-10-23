@@ -1,14 +1,15 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, Star, Clock, Users, ArrowRight } from 'lucide-react';
+import { MapPin, Star, Clock, Users, ArrowRight, Sparkles } from 'lucide-react';
 import { Card, Badge, Button } from '../common';
 
 export const TourCard = ({ tour }) => {
   const navigate = useNavigate();
+  const tourId = tour.id || tour._id;
 
   return (
     <div
-      onClick={() => navigate(`/tours/${tour.id}`)}
+      onClick={() => navigate(`/tours/${tourId}`)}
       className="group bg-white dark:bg-darkSurface-800 border border-sand-200/90 dark:border-darkSurface-700/80 rounded-2xl overflow-hidden flex flex-col h-[490px] shadow-editorial hover:shadow-editorial-hover transition-all duration-300 cursor-pointer"
     >
       {/* Editorial Image Frame */}
@@ -19,20 +20,30 @@ export const TourCard = ({ tour }) => {
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
         />
-        <div className="absolute top-3 left-3 flex gap-1.5">
-          <Badge variant="primary" styleType="solid">
-            {tour.category}
-          </Badge>
-          {tour.isFeatured && (
-            <Badge variant="secondary" styleType="solid">
-              Featured
-            </Badge>
-          )}
-        </div>
-        <div className="absolute top-3 right-3 bg-primary-950/80 backdrop-blur-md px-2.5 py-1 rounded-full text-sand-50 text-xs font-semibold flex items-center gap-1">
-          <Star className="w-3.5 h-3.5 text-accent-400 fill-accent-400" />
+
+        {/* Cinematic gradient overlays for contrast and luxury look */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/35 pointer-events-none" />
+
+        {/* Top-Left: Featured Status (Only if featured, golden luxury pill) */}
+        {tour.isFeatured && (
+          <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg shadow-amber-950/25 border border-amber-300/40 backdrop-blur-sm">
+            <Sparkles className="w-3 h-3 text-amber-200 fill-amber-200 shrink-0" />
+            <span>Featured</span>
+          </div>
+        )}
+
+        {/* Top-Right: Rating & Reviews pill with dark glassmorphism */}
+        <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-950/80 backdrop-blur-md border border-white/20 text-sand-50 text-xs font-semibold shadow-lg">
+          <Star className="w-3.5 h-3.5 text-accent-400 fill-accent-400 shrink-0" />
           <span>{tour.rating}</span>
-          <span className="text-[10px] text-sand-400">({tour.reviewsCount})</span>
+          <span className="text-[10px] text-sand-300/90 font-normal">({tour.reviewsCount})</span>
+        </div>
+
+        {/* Bottom-Left: Category Tag (Clean frosted glass pill) */}
+        <div className="absolute bottom-3 left-3 z-10">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-semibold tracking-wide bg-white/95 dark:bg-darkSurface-900/95 text-primary-950 dark:text-primary-100 shadow-md backdrop-blur-md border border-white/60 dark:border-darkSurface-700">
+            {tour.category}
+          </span>
         </div>
       </div>
 
@@ -87,7 +98,7 @@ export const TourCard = ({ tour }) => {
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/tours/${tour.id}`);
+              navigate(`/tours/${tourId}`);
             }}
             icon={<ArrowRight className="w-3.5 h-3.5" />}
             iconPosition="right"

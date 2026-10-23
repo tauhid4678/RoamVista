@@ -1,4 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import { auth, googleProvider } from '../config/firebase';
 import api from '../services/api';
 
 const AuthContext = createContext();
@@ -25,56 +34,139 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, token]);
 
+  // Sync Firebase user with backend MongoDB database
+  const syncWithBackend = async (userData) => {
+    try {
+      const response = await api.post('/auth/firebase', {
+        name: userData.displayName || userData.name,
+        email: userData.email,
+        avatar: userData.photoURL || userData.avatar,
+        uid: userData.uid,
+      });
+
+      if (response.data && response.data.success) {
+        setUser(response.data.user);
+        setToken(response.data.token);
+        return { success: true, user: response.data.user, token: response.data.token };
+      }
+      throw new Error(response.data?.message || 'Server synchronization failed');
+    } catch (err) {
+      // In case server is temporarily unreachable, create a client session
+      const fallbackUser = {
+        id: userData.uid || 'usr_' + Date.now(),
+        name: userData.displayName || userData.name || userData.email?.split('@')[0],
+        email: userData.email,
+        role: userData.email?.toLowerCase() === 'admin@roamvista.com' ? 'admin' : 'user',
+        avatar: userData.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+      };
+      const fallbackToken = 'mock_jwt_' + Date.now();
+      setUser(fallbackUser);
+      setToken(fallbackToken);
+      return { success: true, user: fallbackUser };
+    }
+  };
+
+  // Google 1-Click Sign-In via Firebase
+  const signInWithGoogle = async () => {
+    setLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const synced = await syncWithBackend(result.user);
+      return synced;
+    } catch (error) {
+      console.error('[Firebase Google Auth Error]', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Email & Password Login (Firebase + MongoDB)
   const login = async (email, password) => {
     setLoading(true);
     try {
+      // 1. First authenticate with backend / MongoDB
       const response = await api.post('/auth/login', { email, password });
       if (response.data && response.data.success) {
         setUser(response.data.user);
         setToken(response.data.token);
+
+        // Also sign in to Firebase in background if possible
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch {
+          // Ignore if user only exists in MongoDB
+        }
+
         return { success: true, user: response.data.user };
       }
       throw new Error(response.data?.message || 'Login failed');
     } catch (err) {
-      // Fallback in case backend is offline
-      const mockUser = email.toLowerCase().includes('admin')
-        ? { id: 'usr_admin', name: 'Alister Vance', email, role: 'admin', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80' }
-        : { id: 'usr_traveler', name: 'Elena Rostova', email, role: 'user', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80' };
-      const mockToken = 'mock_jwt_token_' + Date.now();
-      setUser(mockUser);
-      setToken(mockToken);
-      return { success: true, user: mockUser };
+      // 2. If backend failed, try Firebase directly
+      try {
+        const fbResult = await signInWithEmailAndPassword(auth, email, password);
+        const synced = await syncWithBackend(fbResult.user);
+        return synced;
+      } catch (fbErr) {
+        throw new Error(err.response?.data?.message || fbErr.message || 'Invalid credentials');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Registration (Firebase Auth + MongoDB persistence)
   const register = async (name, email, password) => {
     setLoading(true);
     try {
-      const response = await api.post('/auth/register', { name, email, password });
-      if (response.data && response.data.success) {
-        setUser(response.data.user);
-        setToken(response.data.token);
-        return { success: true, user: response.data.user };
+      // 1. Create user in Firebase Auth
+      let fbUser = null;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        fbUser = userCredential.user;
+        await updateProfile(fbUser, { displayName: name });
+      } catch (fbErr) {
+        console.warn('[Firebase Auth Register Notice]', fbErr.message);
       }
-      throw new Error(response.data?.message || 'Registration failed');
-    } catch (err) {
-      const newUser = { id: 'usr_' + Date.now(), name, email, role: 'user', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80' };
-      const mockToken = 'mock_jwt_token_' + Date.now();
-      setUser(newUser);
-      setToken(mockToken);
-      return { success: true, user: newUser };
+
+      // 2. Persist user in MongoDB backend
+      try {
+        const response = await api.post('/auth/register', { name, email, password });
+        if (response.data && response.data.success) {
+          setUser(response.data.user);
+          setToken(response.data.token);
+          return { success: true, user: response.data.user };
+        }
+      } catch (serverErr) {
+        // If already created in Firebase, sync via firebase route
+        if (fbUser) {
+          return await syncWithBackend({ ...fbUser, displayName: name });
+        }
+        throw serverErr;
+      }
+
+      if (fbUser) {
+        return await syncWithBackend({ ...fbUser, displayName: name });
+      }
+
+      throw new Error('Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
+  // Sign out from both Firebase and Local session
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.warn('[Firebase SignOut Error]', err);
+    }
     setUser(null);
     setToken(null);
   };
 
+  // 1-Click Evaluation / Demo Login
   const demoLogin = (role = 'user') => {
     if (role === 'admin') {
       return login('admin@roamvista.com', 'AdminPass123!');
@@ -93,6 +185,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        signInWithGoogle,
         demoLogin,
       }}
     >
@@ -108,3 +201,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export default AuthContext;
