@@ -213,15 +213,6 @@ export const Home = () => {
             transition: 'transform 0.15s ease-out'
           }}
         >
-          {/* Micro Top Badge */}
-          <motion.div
-            variants={heroItemVariants}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-medium text-accent-300 shadow-lg"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-accent-400 animate-pulse" />
-            <span>Curated Small-Group Expeditions for 2026 & 2027</span>
-          </motion.div>
-
           {/* Heading */}
           <motion.h1
             variants={heroItemVariants}
