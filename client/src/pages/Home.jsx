@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   Compass,
   Search,
@@ -21,10 +22,12 @@ import {
   Ship,
   Snowflake,
   HelpCircle,
-  Clock
+  Clock,
+  BookOpen
 } from 'lucide-react';
-import { Button, Input, Card, Badge } from '../components/common';
+import { Button, Input, Card, Badge, TourCardSkeleton, Modal } from '../components/common';
 import TourCard from '../components/tours/TourCard';
+import tourService from '../services/tourService';
 import { MOCK_TOURS, MOCK_CATEGORIES, MOCK_REVIEWS, MOCK_BLOG_POSTS, MOCK_STATS } from '../data/mockTours';
 import { useToast } from '../context/ToastContext';
 
@@ -38,6 +41,96 @@ export const Home = () => {
   const [selectedBudget, setSelectedBudget] = useState('');
   const [activeFaq, setActiveFaq] = useState(0);
 
+  // 3D Motion and Interactive Perspective State
+  const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 });
+  const [isHoveringHero, setIsHoveringHero] = useState(false);
+
+  // Framer Motion Animation Variants
+  const heroContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.14,
+        delayChildren: 0.15,
+      },
+    },
+  };
+
+  const heroItemVariants = {
+    hidden: { opacity: 0, y: 28 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring',
+        stiffness: 90,
+        damping: 18,
+      },
+    },
+  };
+
+  // Blog Article Modal State
+  const [selectedBlogPost, setSelectedBlogPost] = useState(null);
+
+  // Backend Data Integration
+  const [featuredTours, setFeaturedTours] = useState([]);
+  const [isLoadingTours, setIsLoadingTours] = useState(true);
+  const [stats, setStats] = useState({
+    totalTours: 8,
+    totalCountries: 18,
+    verifiedExplorers: 2450,
+    avgRating: 4.94,
+    satisfactionRate: '99.4%'
+  });
+
+  const handleHeroMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    // Smooth 3D tilt angles between -6deg and +6deg
+    const rotateY = Number(((x / (rect.width / 2)) * 6).toFixed(2));
+    const rotateX = Number((-(y / (rect.height / 2)) * 6).toFixed(2));
+    setHeroTilt({ x: rotateX, y: rotateY });
+  };
+
+  const handleHeroMouseLeave = () => {
+    setIsHoveringHero(false);
+    setHeroTilt({ x: 0, y: 0 });
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchHomeData = async () => {
+      try {
+        const [featuredResult, statsResult] = await Promise.allSettled([
+          tourService.getFeaturedTours(),
+          tourService.getPublicStats()
+        ]);
+
+        if (isMounted) {
+          if (featuredResult.status === 'fulfilled' && featuredResult.value && featuredResult.value.length > 0) {
+            setFeaturedTours(featuredResult.value);
+          } else {
+            setFeaturedTours(MOCK_TOURS.filter((t) => t.isFeatured).slice(0, 4));
+          }
+
+          if (statsResult.status === 'fulfilled' && statsResult.value) {
+            setStats(statsResult.value);
+          }
+          setIsLoadingTours(false);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setFeaturedTours(MOCK_TOURS.filter((t) => t.isFeatured).slice(0, 4));
+          setIsLoadingTours(false);
+        }
+      }
+    };
+    fetchHomeData();
+    return () => { isMounted = false; };
+  }, []);
+
   const handleHeroSearch = (e) => {
     e.preventDefault();
     const params = new URLSearchParams();
@@ -46,8 +139,6 @@ export const Home = () => {
     if (selectedBudget) params.set('maxPrice', selectedBudget);
     navigate(`/explore?${params.toString()}`);
   };
-
-  const featuredTours = MOCK_TOURS.filter((t) => t.isFeatured).slice(0, 4);
 
   const faqs = [
     {
@@ -70,52 +161,111 @@ export const Home = () => {
 
   return (
     <div className="space-y-24 pb-24">
-      {/* 1. CINEMATIC HERO (Within 60-70% Viewport Height Target) */}
-      <section className="relative h-[68vh] min-h-[540px] max-h-[700px] w-full flex items-center justify-center overflow-hidden">
-        {/* Editorial Background Image with Subtle Depth */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=85"
-            alt="Patagonia Wilderness Mountain Vista"
-            className="w-full h-full object-cover scale-105 animate-fade-in"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0C1210] via-[#0C1210]/45 to-[#0C1210]/20" />
+      {/* 1. CINEMATIC 3D MOTION & FRAMER MOTION EXPEDITION HERO */}
+      <section
+        onMouseMove={handleHeroMouseMove}
+        onMouseEnter={() => setIsHoveringHero(true)}
+        onMouseLeave={handleHeroMouseLeave}
+        className="relative h-[78vh] min-h-[620px] max-h-[760px] w-full flex items-center justify-center overflow-hidden perspective-1500 cursor-default"
+      >
+        {/* 3D Motion Depth Container */}
+        <div
+          className="absolute inset-0 transition-transform duration-300 ease-out preserve-3d"
+          style={{
+            transform: `rotateX(${heroTilt.x}deg) rotateY(${heroTilt.y}deg)`,
+          }}
+        >
+          {/* Background Cinematic Motion Video */}
+          <div className="absolute -inset-10 z-0 overflow-hidden">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              poster="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2200&q=85"
+              className="w-full h-full object-cover scale-110 pointer-events-none"
+              style={{
+                transform: `translate3d(${-heroTilt.y * 3.5}px, ${heroTilt.x * 3.5}px, -40px)`,
+                transition: 'transform 0.15s ease-out'
+              }}
+            >
+              <source src="https://storage.googleapis.com/cloud-samples-data/generative-ai/evaluation/videos/mountain.mp4" type="video/mp4" />
+            </video>
+
+            {/* Cinematic Gradient Vignette Overlay for Crisp Readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0C1210] via-[#0C1210]/55 to-[#0C1210]/35 pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-[#0C1210]/20 to-[#0C1210]/80 pointer-events-none" />
+          </div>
+
+          {/* 3D Glowing Ambient Light Orbs */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-accent-500/15 blur-3xl pointer-events-none animate-pulse-glow" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-primary-500/20 blur-3xl pointer-events-none animate-float-delayed" />
         </div>
 
-        {/* Hero Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sand-50 space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-medium text-accent-300">
-            <Sparkles className="w-3.5 h-3.5 text-accent-400" />
+        {/* Hero Central Content with Framer Motion Staggered Transitions */}
+        <motion.div
+          variants={heroContainerVariants}
+          initial="hidden"
+          animate="visible"
+          className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sand-50 space-y-6"
+          style={{
+            transform: `translate3d(${heroTilt.y * 1.5}px, ${-heroTilt.x * 1.5}px, 35px)`,
+            transition: 'transform 0.15s ease-out'
+          }}
+        >
+          {/* Micro Top Badge */}
+          <motion.div
+            variants={heroItemVariants}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-medium text-accent-300 shadow-lg"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-accent-400 animate-pulse" />
             <span>Curated Small-Group Expeditions for 2026 & 2027</span>
-          </div>
+          </motion.div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-serif font-bold tracking-tight leading-[1.08]">
+          {/* Heading */}
+          <motion.h1
+            variants={heroItemVariants}
+            className="text-4xl sm:text-6xl lg:text-7xl font-serif font-bold tracking-tight leading-[1.08] drop-shadow-md"
+          >
             Extraordinary Journeys <br className="hidden sm:inline" />
             <span className="italic font-normal text-accent-300">for the Discerning Explorer</span>
-          </h1>
+          </motion.h1>
 
-          <p className="max-w-2xl mx-auto text-xs sm:text-sm text-sand-200 font-light leading-relaxed">
+          {/* Subtitle */}
+          <motion.p
+            variants={heroItemVariants}
+            className="max-w-2xl mx-auto text-xs sm:text-sm text-sand-200 font-light leading-relaxed drop-shadow"
+          >
             Pioneering thoughtful, small-group adventures and transformative cultural journeys across seven continents, accompanied by certified field leaders.
-          </p>
+          </motion.p>
 
           {/* Primary & Secondary CTAs */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Link to="/explore">
-              <Button variant="secondary" size="md" icon={<ArrowRight className="w-4 h-4" />} iconPosition="right">
-                Explore Destinations
-              </Button>
-            </Link>
-            <Link to="/explore?category=Cultural+Heritage">
-              <Button variant="outline" size="md" className="border-white/30 text-sand-50 hover:bg-white/10">
-                Discover Experiences
-              </Button>
-            </Link>
-          </div>
+          <motion.div
+            variants={heroItemVariants}
+            className="flex flex-wrap items-center justify-center gap-3 pt-2"
+          >
+            <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}>
+              <Link to="/explore">
+                <Button variant="secondary" size="md" icon={<ArrowRight className="w-4 h-4" />} iconPosition="right">
+                  Explore Destinations
+                </Button>
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}>
+              <Link to="/experiences">
+                <Button variant="outline" size="md" className="border-white/40 text-sand-50 bg-white/10 hover:bg-white/20 backdrop-blur-md font-semibold">
+                  Discover Experiences
+                </Button>
+              </Link>
+            </motion.div>
+          </motion.div>
 
-          {/* Functional Destination Search Bar */}
-          <form
+          {/* Functional Destination Search Bar with Framer Motion Hover Elevation */}
+          <motion.form
+            variants={heroItemVariants}
+            whileHover={{ y: -3, transition: { duration: 0.2 } }}
             onSubmit={handleHeroSearch}
-            className="max-w-4xl mx-auto p-3 sm:p-4 rounded-2xl bg-white/95 dark:bg-darkSurface-800/95 backdrop-blur-md shadow-2xl border border-sand-200/50 dark:border-darkSurface-700 text-sand-900 dark:text-sand-100 grid grid-cols-1 sm:grid-cols-4 gap-3 text-left mt-6"
+            className="max-w-4xl mx-auto p-3 sm:p-4 rounded-2xl bg-white/95 dark:bg-darkSurface-800/95 backdrop-blur-md shadow-2xl border border-sand-200/50 dark:border-darkSurface-700 text-sand-900 dark:text-sand-100 grid grid-cols-1 sm:grid-cols-4 gap-3 text-left mt-6 hover:shadow-accent-500/10 transition-shadow"
           >
             {/* Destination Input */}
             <div className="flex flex-col gap-1 px-3 py-2 rounded-xl bg-sand-100/60 dark:bg-darkSurface-900 border border-sand-200/80 dark:border-darkSurface-700/80">
@@ -178,17 +328,72 @@ export const Home = () => {
               variant="primary"
               size="md"
               fullWidth
-              className="h-full py-3"
+              className="h-full py-3 shadow-md hover:shadow-lg"
               icon={<Search className="w-4 h-4" />}
             >
               Find Journeys
             </Button>
-          </form>
+          </motion.form>
+        </motion.div>
+      </section>
+
+      {/* 2. PLATFORM IMPACT & VERIFIED METRICS (Dynamic Backend Statistics) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 sm:-mt-12 relative z-20">
+        <div className="rounded-3xl p-6 sm:p-8 bg-white/95 dark:bg-darkSurface-800/95 backdrop-blur-xl border border-sand-200/80 dark:border-darkSurface-700/80 shadow-2xl relative overflow-hidden">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 divide-y sm:divide-y-0 sm:divide-x divide-sand-200/60 dark:divide-darkSurface-700/60 text-center">
+            <div className="flex flex-col items-center p-2">
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-primary-600 dark:text-accent-400">
+                {stats.totalTours ? `${stats.totalTours}+` : '8+'}
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-sand-800 dark:text-sand-100 mt-1">
+                Curated Expeditions
+              </span>
+              <span className="text-[10px] text-sand-500 dark:text-sand-400 mt-0.5">
+                Vetted by alpine masters
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center p-2">
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-primary-600 dark:text-accent-400">
+                {stats.totalCountries ? `${stats.totalCountries}+` : '18+'}
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-sand-800 dark:text-sand-100 mt-1">
+                Wilderness Regions
+              </span>
+              <span className="text-[10px] text-sand-500 dark:text-sand-400 mt-0.5">
+                Across 7 continents
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center p-2">
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-primary-600 dark:text-accent-400">
+                {stats.verifiedExplorers ? `${stats.verifiedExplorers.toLocaleString()}+` : '2,450+'}
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-sand-800 dark:text-sand-100 mt-1">
+                Verified Travelers
+              </span>
+              <span className="text-[10px] text-sand-500 dark:text-sand-400 mt-0.5">
+                Intimate small groups
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center p-2">
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-primary-600 dark:text-accent-400 flex items-center justify-center gap-1">
+                {stats.avgRating || '4.94'} <span className="text-xl text-accent-500">★</span>
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-sand-800 dark:text-sand-100 mt-1">
+                Explorer Rating
+              </span>
+              <span className="text-[10px] text-sand-500 dark:text-sand-400 mt-0.5">
+                {stats.satisfactionRate || '99.4%'} positive feedback
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* 2. FEATURED DESTINATIONS (Editorial 4-Cards Desktop Grid) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      {/* 3. FEATURED DESTINATIONS (Editorial 4-Cards Desktop Grid) */}
+      <section id="destinations" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 scroll-mt-24">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-sand-200/80 dark:border-darkSurface-700/80 pb-6">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-luxury text-accent-600 dark:text-accent-400">
@@ -208,16 +413,25 @@ export const Home = () => {
           </Link>
         </div>
 
-        {/* 4 Cards Desktop Grid */}
+        {/* 4 Cards Desktop Grid with Loading Skeletons */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featuredTours.map((tour) => (
-            <TourCard key={tour.id} tour={tour} />
-          ))}
+          {isLoadingTours ? (
+            <>
+              <TourCardSkeleton />
+              <TourCardSkeleton />
+              <TourCardSkeleton />
+              <TourCardSkeleton />
+            </>
+          ) : (
+            featuredTours.map((tour) => (
+              <TourCard key={tour._id || tour.id} tour={tour} />
+            ))
+          )}
         </div>
       </section>
 
-      {/* 3. TRAVEL EXPERIENCES / CATEGORIES */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      {/* 4. TRAVEL EXPERIENCES / CATEGORIES */}
+      <section id="experiences" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 scroll-mt-24">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-sand-200/80 dark:border-darkSurface-700/80 pb-6">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-luxury text-accent-600 dark:text-accent-400">
@@ -230,7 +444,7 @@ export const Home = () => {
               Whether your passion lies in high-alpine summits, private coastal yachting, or wildlife tracking, find your ideal expedition style.
             </p>
           </div>
-          <Link to="/explore">
+          <Link to="/experiences">
             <Button variant="outline" size="sm" icon={<ArrowRight className="w-3.5 h-3.5" />} iconPosition="right">
               Explore All Themes
             </Button>
@@ -241,7 +455,7 @@ export const Home = () => {
           {MOCK_CATEGORIES.map((cat) => (
             <Link
               key={cat.name}
-              to={`/explore?category=${encodeURIComponent(cat.name)}`}
+              to={`/experiences?theme=${encodeURIComponent(cat.name)}`}
               className="group relative h-72 rounded-2xl overflow-hidden shadow-editorial hover:shadow-editorial-hover transition-all duration-300"
             >
               <img
@@ -406,40 +620,111 @@ export const Home = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {MOCK_BLOG_POSTS.map((post) => (
-            <Card key={post.id} padding="p-0" hoverEffect={true} className="overflow-hidden flex flex-col group">
-              <div className="h-48 w-full overflow-hidden bg-sand-200">
-                <img
-                  src={post.image}
-                  alt={post.title}
-                  loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-              </div>
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-sand-500 mb-2">
-                    <Badge variant="primary" size="sm">{post.category}</Badge>
-                    <span className="flex items-center gap-1 font-medium">
-                      <Clock className="w-3 h-3" />
-                      {post.readTime}
-                    </span>
+            <div
+              key={post.id}
+              onClick={() => setSelectedBlogPost(post)}
+              className="cursor-pointer"
+            >
+              <Card padding="p-0" hoverEffect={true} className="overflow-hidden flex flex-col group h-full">
+                <div className="h-48 w-full overflow-hidden bg-sand-200 relative">
+                  <img
+                    src={post.image}
+                    alt={post.title}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-primary-950/80 backdrop-blur-md text-sand-50 px-2.5 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1">
+                    <BookOpen className="w-3 h-3 text-accent-400" />
+                    <span>Read Article</span>
                   </div>
-                  <h3 className="text-sm font-serif font-bold text-sand-950 dark:text-sand-50 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2">
-                    {post.title}
-                  </h3>
-                  <p className="text-xs text-sand-600 dark:text-sand-400 mt-2 line-clamp-2 leading-relaxed font-light">
-                    {post.excerpt}
-                  </p>
                 </div>
-                <div className="pt-3 border-t border-sand-200/80 dark:border-darkSurface-700/80 flex items-center justify-between text-[11px] text-sand-500">
-                  <span className="font-semibold text-sand-700 dark:text-sand-300">{post.author}</span>
-                  <span>{post.date}</span>
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] text-sand-500 mb-2">
+                      <Badge variant="primary" size="sm">{post.category}</Badge>
+                      <span className="flex items-center gap-1 font-medium">
+                        <Clock className="w-3 h-3" />
+                        {post.readTime}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-serif font-bold text-sand-950 dark:text-sand-50 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2">
+                      {post.title}
+                    </h3>
+                    <p className="text-xs text-sand-600 dark:text-sand-400 mt-2 line-clamp-2 leading-relaxed font-light">
+                      {post.excerpt}
+                    </p>
+                  </div>
+                  <div className="pt-3 border-t border-sand-200/80 dark:border-darkSurface-700/80 flex items-center justify-between text-[11px] text-sand-500">
+                    <span className="font-semibold text-sand-700 dark:text-sand-300">{post.author}</span>
+                    <span>{post.date}</span>
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            </div>
           ))}
         </div>
       </section>
+
+      {/* Full Article Reading Modal for Home Blog Dispatches */}
+      {selectedBlogPost && (
+        <Modal
+          isOpen={!!selectedBlogPost}
+          onClose={() => setSelectedBlogPost(null)}
+          title={selectedBlogPost.title}
+          description={`${selectedBlogPost.category} · ${selectedBlogPost.readTime} · By ${selectedBlogPost.author}`}
+          size="lg"
+        >
+          <div className="space-y-6 text-sand-900 dark:text-sand-100 max-h-[75vh] overflow-y-auto pr-1">
+            <div className="relative h-64 sm:h-80 w-full rounded-2xl overflow-hidden bg-sand-200 shadow-md">
+              <img
+                src={selectedBlogPost.image}
+                alt={selectedBlogPost.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-sand-50 text-xs">
+                <span className="font-semibold text-accent-300">{selectedBlogPost.author}</span>
+                <span>{selectedBlogPost.date}</span>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs sm:text-sm leading-relaxed text-sand-700 dark:text-sand-300 font-light">
+              {selectedBlogPost.content ? (
+                selectedBlogPost.content.map((paragraph, idx) => (
+                  <p key={idx} className="first:text-sm sm:first:text-base first:font-normal first:text-sand-900 dark:first:text-sand-100">
+                    {paragraph}
+                  </p>
+                ))
+              ) : (
+                <p>{selectedBlogPost.excerpt}</p>
+              )}
+            </div>
+
+            {selectedBlogPost.proTip && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-sand-100/80 dark:bg-darkSurface-900 border border-accent-400/40 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-accent-700 dark:text-accent-400">
+                  <Sparkles className="w-4 h-4 text-accent-500" />
+                  <span>Field Leader Dispatch Note</span>
+                </div>
+                <p className="text-xs text-sand-700 dark:text-sand-300 italic leading-relaxed font-serif">
+                  "{selectedBlogPost.proTip}"
+                </p>
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-sand-200/80 dark:border-darkSurface-700/80 flex flex-wrap items-center justify-between gap-3">
+              <Link to="/explore" onClick={() => setSelectedBlogPost(null)}>
+                <Button variant="primary" size="sm" icon={<Compass className="w-4 h-4" />}>
+                  Explore Expeditions
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={() => setSelectedBlogPost(null)}>
+                Close Dispatch
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* 7. VERIFIED TRAVELER REVIEWS */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">

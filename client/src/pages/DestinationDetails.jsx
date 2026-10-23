@@ -15,7 +15,7 @@ import {
   Compass,
   ArrowRight
 } from 'lucide-react';
-import { Button, Badge, Card, Modal, Input } from '../components/common';
+import { Button, Badge, Card, Modal, Input, TourCardSkeleton } from '../components/common';
 import TourCard from '../components/tours/TourCard';
 import tourService from '../services/tourService';
 import api from '../services/api';
@@ -37,6 +37,7 @@ export const DestinationDetails = () => {
   const [isBooked, setIsBooked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [relatedTours, setRelatedTours] = useState([]);
 
   // Load tour data
   useEffect(() => {
@@ -59,6 +60,41 @@ export const DestinationDetails = () => {
     return () => { isMounted = false; };
   }, [id]);
 
+  // Load related tours dynamically from backend by category
+  useEffect(() => {
+    let isMounted = true;
+    if (!tour) return;
+
+    const fetchRelated = async () => {
+      try {
+        const res = await tourService.getTours({ category: tour.category, limit: 5 });
+        if (isMounted && res.data && res.data.length > 0) {
+          const currentId = tour._id || tour.id;
+          const filtered = res.data
+            .filter((t) => (t._id || t.id) !== currentId)
+            .slice(0, 4);
+          if (filtered.length > 0) {
+            setRelatedTours(filtered);
+            return;
+          }
+        }
+        // Graceful fallback
+        const fallback = MOCK_TOURS.filter(
+          (t) => (t._id || t.id) !== (tour._id || tour.id) && (t.category === tour.category || t.isFeatured)
+        ).slice(0, 4);
+        if (isMounted) setRelatedTours(fallback);
+      } catch (err) {
+        const fallback = MOCK_TOURS.filter(
+          (t) => (t._id || t.id) !== (tour._id || tour.id) && (t.category === tour.category || t.isFeatured)
+        ).slice(0, 4);
+        if (isMounted) setRelatedTours(fallback);
+      }
+    };
+
+    fetchRelated();
+    return () => { isMounted = false; };
+  }, [tour]);
+
   if (isLoading || !tour) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center space-y-4">
@@ -68,7 +104,6 @@ export const DestinationDetails = () => {
     );
   }
 
-  const relatedTours = MOCK_TOURS.filter((t) => t.id !== tour.id && (t.category === tour.category || t.isFeatured)).slice(0, 4);
   const totalPrice = tour.price * guestsCount;
 
   const handleBookingSubmit = async (e) => {
@@ -385,9 +420,18 @@ export const DestinationDetails = () => {
       <div className="pt-12 border-t border-sand-200/80 dark:border-darkSurface-700/80 space-y-6">
         <h2 className="text-3xl font-serif font-bold text-sand-950 dark:text-sand-50">Related Expeditions You May Love</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {relatedTours.map((t) => (
-            <TourCard key={t.id || t._id} tour={t} />
-          ))}
+          {relatedTours.length === 0 ? (
+            <>
+              <TourCardSkeleton />
+              <TourCardSkeleton />
+              <TourCardSkeleton />
+              <TourCardSkeleton />
+            </>
+          ) : (
+            relatedTours.map((t) => (
+              <TourCard key={t.id || t._id} tour={t} />
+            ))
+          )}
         </div>
       </div>
 

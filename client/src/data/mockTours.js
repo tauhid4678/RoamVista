@@ -414,7 +414,14 @@ export const MOCK_BLOG_POSTS = [
     category: 'Gear & Preparation',
     readTime: '6 min read',
     image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
-    excerpt: 'Patagonia experiences four seasons in a single afternoon. Learn how proper three-layer systems, waterproof membrane ratings, and terrain boots keep you safe and warm on the trail.'
+    excerpt: 'Patagonia experiences four seasons in a single afternoon. Learn how proper three-layer systems, waterproof membrane ratings, and terrain boots keep you safe and warm on the trail.',
+    content: [
+      'In Southern Patagonia, meteorological forecasts are merely polite suggestions. Within a forty-minute span ascending toward the Cuernos del Paine, an explorer can transition from scorching Andean sunshine to gale-force katabatic gusts carrying sleet straight from the Southern Patagonian Ice Field.',
+      'The foundational law of alpine packing here is strict technical layering. Your base layer must be lightweight Merino wool (200g/m²) to regulate core temperature without trapping moisture. Avoid synthetic polyesters that retain odors and clamminess over multi-day traverses.',
+      'Your mid-layer must provide high warmth-to-weight loft—such as 800-fill RDS-certified goose down or Polartec Alpha insulation. Finally, your outer shell requires a 3-layer Gore-Tex Pro or eVent membrane rated to at least 28,000mm hydrostatic head with fully taped seams and underarm pit zips for heat venting during steep climbs.',
+      'For footwear, rigid shank trekking boots with Vibram Megagrip outsoles are non-negotiable. The moraine fields leading to the Torres Base amphitheater comprise loose scree and wet granite boulders where ankle rolling is the primary risk.'
+    ],
+    proTip: 'Pack your down jacket inside a siliconized waterproof dry sack rather than a standard stuff sack. Even top-tier expedition backpacks can absorb water during torrential Patagonian river crossings.'
   },
   {
     id: 'blog-2',
@@ -424,7 +431,15 @@ export const MOCK_BLOG_POSTS = [
     category: 'Wildlife Guide',
     readTime: '8 min read',
     image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=800&q=80',
-    excerpt: 'Understanding seasonal rain patterns across the Serengeti-Mara ecosystem to ensure you witness dramatic river crossings and calving seasons at the right time.'
+    excerpt: 'Understanding seasonal rain patterns across the Serengeti-Mara ecosystem to ensure you witness dramatic river crossings and calving seasons at the right time.',
+    content: [
+      'The Great Serengeti Migration is neither a single event nor a linear journey. It is a perpetual, circular clockwise voyage of over 1.8 million blue wildebeest, 300,000 zebras, and hundreds of thousands of gazelles chasing subterranean mineral salts and fresh rainfall across 30,000 square kilometers of pristine East African wilderness.',
+      'January to March (The Calving Season): The southern Serengeti plains around Ndutu and the Ngorongoro Conservation Area erupt with life. Within a three-week window in February, over 500,000 calves are born—an evolutionary defense mechanism where predators (lions, cheetahs, and spotted hyenas) are completely saturated by sheer numbers.',
+      'April to June (The Western Corridor & Grumeti): As the southern plains dry out, the herds turn northwest toward Lake Victoria. They encounter their first treacherous water obstacle: the Grumeti River, inhabited by massive 18-foot Nile crocodiles that lie in wait for the herds to plunge into the brown torrents.',
+      'July to October (The Mara River Crossings): The pinnacle spectacle. Pushed by instinct and thirst, the herds face the thundering Mara River on the border between Tanzania and Kenya’s Maasai Mara. Massive dust plumes billow into the azure sky as thousands of animals leap off 20-foot riverbanks into churning waters.',
+      'November to December (The Return South): Short rains trigger rapid regrowth in the nutrient-dense volcanic soils of the south, beckoning the herds back down eastern Serengeti to complete the grand cycle once again.'
+    ],
+    proTip: 'For the dramatic river crossings, base yourself at a mobile canvas safari camp in the northern Kogatende sector rather than a fixed lodge. Mobile camps shift location alongside the herds to keep drive times under 20 minutes.'
   },
   {
     id: 'blog-3',
@@ -434,7 +449,13 @@ export const MOCK_BLOG_POSTS = [
     category: 'Culture & Mindset',
     readTime: '5 min read',
     image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=800&q=80',
-    excerpt: 'Step away from the crowded sightseeing buses into contemplative rock gardens that invite contemplation and harmony with the changing seasons.'
+    excerpt: 'Step away from the crowded sightseeing buses into contemplative rock gardens that invite contemplation and harmony with the changing seasons.',
+    content: [
+      'While millions of tourists jostle for selfies under the orange vermilion gates of Fushimi Inari, the true soul of ancient Kyoto whispers in the secluded northern sub-temples of Daitoku-ji and Myoshin-ji.',
+      'Here, Rinzai Zen Buddhism established monasteries five centuries ago where landscape architecture was conceived not as decoration, but as an instrument of spiritual awakening. The karesansui (dry rock gardens) represent the cosmos in miniature: raked white gravel ripples signify boundless oceans, while moss-cushioned granite stones symbolize solitary islands of consciousness.',
+      'At dawn, before public entrance hours, our travelers are granted private audience with resident Zen masters for zazen meditation. Sitting barefoot on ancient cedar engawa verandas as morning mist rises off temple pine groves, one begins to understand the elusive Japanese aesthetic principle of "Yūgen"—a profound grace and subtlety that reveals itself only in patient stillness.'
+    ],
+    proTip: 'Wear clean, unbranded dark socks with no patterns when visiting Zen temples. You will frequently slip shoes on and off, and traditional monastery tatami mats require respectful, silent footfall.'
   }
 ];
 

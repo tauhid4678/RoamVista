@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
-import { User, Mail, Phone, Lock, Camera, CheckCircle, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Mail, Phone, Lock, Camera, CheckCircle, Shield, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Card, Input, Textarea, Button, Badge } from '../components/common';
+import { Card, Input, Textarea, Button, Badge, Modal } from '../components/common';
+import api from '../services/api';
 
 export const Profile = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, updateUserSession } = useAuth();
   const toast = useToast();
 
   const [name, setName] = useState(user?.name || 'Elena Rostova');
   const [email] = useState(user?.email || 'traveler@roamvista.com');
-  const [phone, setPhone] = useState('+1 (415) 890-2341');
-  const [bio, setBio] = useState('Passionate alpine trekker and documentary photographer with a passion for South American glaciers and Japanese mountain culture.');
-  const [avatar, setAvatar] = useState(user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80');
+  const [phone, setPhone] = useState(user?.phone || '+1 (415) 890-2341');
+  const [bio, setBio] = useState(
+    user?.bio ||
+      'Passionate alpine trekker and documentary photographer with a passion for South American glaciers and Japanese mountain culture.'
+  );
+  const [avatar, setAvatar] = useState(
+    user?.avatar ||
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
+  );
+
+  // Photo modal state
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [tempAvatarUrl, setTempAvatarUrl] = useState('');
 
   // Password state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -21,16 +32,45 @@ export const Profile = () => {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  const handleProfileUpdate = (e) => {
+  useEffect(() => {
+    if (user) {
+      if (user.name) setName(user.name);
+      if (user.phone) setPhone(user.phone);
+      if (user.bio) setBio(user.bio);
+      if (user.avatar) setAvatar(user.avatar);
+    }
+  }, [user]);
+
+  const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setIsUpdatingProfile(true);
-    setTimeout(() => {
+
+    try {
+      const res = await api.put('/auth/profile', {
+        name,
+        phone,
+        bio,
+        avatar,
+      });
+
+      if (res.data?.user) {
+        updateUserSession(res.data.user);
+      } else if (res.data?.data) {
+        updateUserSession(res.data.data);
+      } else {
+        updateUserSession({ name, phone, bio, avatar });
+      }
+
+      toast.success('Profile details updated in database successfully.');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to update profile. Please try again.';
+      toast.error(msg);
+    } finally {
       setIsUpdatingProfile(false);
-      toast.success('Profile details updated successfully.');
-    }, 800);
+    }
   };
 
-  const handlePasswordUpdate = (e) => {
+  const handlePasswordUpdate = async (e) => {
     e.preventDefault();
     if (!currentPassword) {
       toast.error('Current password is required.');
@@ -46,14 +86,39 @@ export const Profile = () => {
     }
 
     setIsUpdatingPassword(true);
-    setTimeout(() => {
-      setIsUpdatingPassword(false);
-      toast.success('Your password has been changed securely.');
+    try {
+      await api.put('/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+
+      toast.success('Your password has been changed securely in the database.');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
-    }, 1000);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Password update failed. Verify your current password.';
+      toast.error(msg);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
+
+  const handleSaveAvatar = () => {
+    if (tempAvatarUrl.trim()) {
+      setAvatar(tempAvatarUrl.trim());
+      toast.success('Profile image URL updated. Click "Save Profile Changes" to persist.');
+    }
+    setIsPhotoModalOpen(false);
+  };
+
+  const sampleAvatars = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+  ];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
@@ -83,11 +148,11 @@ export const Profile = () => {
               <button
                 type="button"
                 onClick={() => {
-                  const newUrl = prompt('Enter new image URL:', avatar);
-                  if (newUrl) setAvatar(newUrl);
+                  setTempAvatarUrl(avatar);
+                  setIsPhotoModalOpen(true);
                 }}
                 aria-label="Change profile photo"
-                className="absolute inset-0 bg-neutral-900/40 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute inset-0 bg-neutral-900/50 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Camera className="w-6 h-6" />
               </button>
@@ -102,14 +167,12 @@ export const Profile = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const newUrl = prompt('Enter profile image URL:', avatar);
-                    if (newUrl) {
-                      setAvatar(newUrl);
-                      toast.success('Avatar updated.');
-                    }
+                    setTempAvatarUrl(avatar);
+                    setIsPhotoModalOpen(true);
                   }}
+                  icon={<ImageIcon className="w-3.5 h-3.5" />}
                 >
-                  Upload New Photo
+                  Change Profile Photo
                 </Button>
               </div>
             </div>
@@ -161,7 +224,13 @@ export const Profile = () => {
           />
 
           <div className="flex justify-end">
-            <Button type="submit" variant="primary" size="md" isLoading={isUpdatingProfile}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              isLoading={isUpdatingProfile}
+              disabled={isUpdatingProfile}
+            >
               Save Profile Changes
             </Button>
           </div>
@@ -212,12 +281,77 @@ export const Profile = () => {
           </div>
 
           <div className="flex justify-end">
-            <Button type="submit" variant="outline" size="md" isLoading={isUpdatingPassword}>
+            <Button
+              type="submit"
+              variant="outline"
+              size="md"
+              isLoading={isUpdatingPassword}
+              disabled={isUpdatingPassword}
+            >
               Change Password
             </Button>
           </div>
         </form>
       </Card>
+
+      {/* Profile Photo Modal with Live Preview and Quick Presets */}
+      <Modal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        title="Update Profile Photo"
+        description="Provide a direct image URL or choose from curated expedition avatars."
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-center p-4 bg-sand-100/60 dark:bg-darkSurface-900 rounded-2xl">
+            <img
+              src={tempAvatarUrl || avatar}
+              alt="Avatar Preview"
+              className="w-24 h-24 rounded-full object-cover ring-4 ring-primary-500/30"
+              onError={(e) => {
+                e.target.src =
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
+              }}
+            />
+          </div>
+
+          <Input
+            id="avatar-url-input"
+            label="Direct Image URL"
+            placeholder="https://images.unsplash.com/..."
+            value={tempAvatarUrl}
+            onChange={(e) => setTempAvatarUrl(e.target.value)}
+          />
+
+          <div>
+            <label className="text-xs font-semibold text-sand-800 dark:text-sand-200 block mb-2">
+              Or Select a Preset Avatar:
+            </label>
+            <div className="flex items-center gap-3">
+              {sampleAvatars.map((url, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setTempAvatarUrl(url)}
+                  className={`w-11 h-11 rounded-full overflow-hidden border-2 transition-transform hover:scale-110 ${
+                    tempAvatarUrl === url ? 'border-primary-500 scale-105 ring-2 ring-primary-500/30' : 'border-transparent'
+                  }`}
+                >
+                  <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-sand-200/80 dark:border-darkSurface-700/80">
+            <Button variant="outline" size="sm" onClick={() => setIsPhotoModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleSaveAvatar}>
+              Select Avatar
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

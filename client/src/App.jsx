@@ -1,23 +1,24 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Loading from './components/common/Loading';
 import Button from './components/common/Button';
 
-// Page Imports
-import Home from './pages/Home';
-import Explore from './pages/Explore';
-import DestinationDetails from './pages/DestinationDetails';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Blog from './pages/Blog';
-import Login from './pages/Login';
-import Registration from './pages/Registration';
-import Profile from './pages/Profile';
-import UserDashboard from './pages/user/UserDashboard';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import DevShowcase from './pages/DevShowcase';
+// Route Code-Splitting via React.lazy
+const Home = lazy(() => import('./pages/Home'));
+const Explore = lazy(() => import('./pages/Explore'));
+const DestinationDetails = lazy(() => import('./pages/DestinationDetails'));
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Blog = lazy(() => import('./pages/Blog'));
+const Login = lazy(() => import('./pages/Login'));
+const Registration = lazy(() => import('./pages/Registration'));
+const Profile = lazy(() => import('./pages/Profile'));
+const UserDashboard = lazy(() => import('./pages/user/UserDashboard'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const DevShowcase = lazy(() => import('./pages/DevShowcase'));
+const Experiences = lazy(() => import('./pages/Experiences'));
 
 // 404 Not Found Page
 const NotFound = () => (
@@ -48,6 +49,8 @@ export default function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/explore" element={<Explore />} />
+            <Route path="/destinations" element={<Explore />} />
+            <Route path="/experiences" element={<Experiences />} />
             <Route path="/tours/:id" element={<DestinationDetails />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />

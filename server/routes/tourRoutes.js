@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getTours,
   getFeaturedTours,
+  getPublicStats,
   getTourById,
   createTour,
   updateTour,
@@ -13,6 +14,7 @@ const router = express.Router();
 
 router.get('/', getTours);
 router.get('/featured', getFeaturedTours);
+router.get('/stats', getPublicStats);
 router.get('/:id', getTourById);
 
 // Admin protected endpoints

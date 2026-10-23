@@ -78,7 +78,7 @@ export const Navbar = () => {
             <NavLink to="/explore" className={navLinkClasses}>
               Destinations
             </NavLink>
-            <NavLink to="/explore?category=Cultural+Heritage" className={navLinkClasses}>
+            <NavLink to="/experiences" className={navLinkClasses}>
               Experiences
             </NavLink>
             <NavLink to="/about" className={navLinkClasses}>
@@ -253,7 +253,7 @@ export const Navbar = () => {
           <NavLink to="/explore" className={mobileNavLinkClasses} onClick={() => setMobileMenuOpen(false)}>
             Destinations
           </NavLink>
-          <NavLink to="/explore?category=Cultural+Heritage" className={mobileNavLinkClasses} onClick={() => setMobileMenuOpen(false)}>
+          <NavLink to="/experiences" className={mobileNavLinkClasses} onClick={() => setMobileMenuOpen(false)}>
             Experiences
           </NavLink>
           <NavLink to="/about" className={mobileNavLinkClasses} onClick={() => setMobileMenuOpen(false)}>

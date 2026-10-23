@@ -174,6 +174,14 @@ export const AuthProvider = ({ children }) => {
     return login('traveler@roamvista.com', 'Traveler123!');
   };
 
+  const updateUserSession = (updatedUser) => {
+    setUser((prev) => {
+      const merged = { ...prev, ...updatedUser };
+      localStorage.setItem('roamvista_user', JSON.stringify(merged));
+      return merged;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -187,6 +195,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         signInWithGoogle,
         demoLogin,
+        updateUserSession,
       }}
     >
       {children}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock, CheckCircle } from 'lucide-react';
 import { Button, Input, Textarea, Card, Badge } from '../components/common';
 import { useToast } from '../context/ToastContext';
+import api from '../services/api';
 
 export const Contact = () => {
   const toast = useToast();
@@ -36,7 +37,7 @@ export const Contact = () => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) {
       toast.error('Please fix the errors in the form.');
@@ -44,11 +45,11 @@ export const Contact = () => {
     }
 
     setLoading(true);
-    // Prepared for MongoDB API route POST /api/contact
-    setTimeout(() => {
+    try {
+      const res = await api.post('/contact', formData);
       setLoading(false);
       setIsSubmitted(true);
-      toast.success('Your message has been received by our expedition concierge.');
+      toast.success(res.data?.message || 'Your inquiry has been received and stored in our database.');
       setFormData({
         name: '',
         email: '',
@@ -56,7 +57,11 @@ export const Contact = () => {
         category: 'General Inquiry',
         message: ''
       });
-    }, 1200);
+    } catch (err) {
+      setLoading(false);
+      const msg = err.response?.data?.message || 'Failed to submit inquiry. Please try again.';
+      toast.error(msg);
+    }
   };
 
   return (

@@ -27,6 +27,19 @@ export const tourService = {
     }
   },
 
+  async getPublicStats() {
+    try {
+      const response = await api.get('/tours/stats');
+      if (response.data && response.data.success) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.warn('[TourService] Failed to load public stats:', error.message);
+      return null;
+    }
+  },
+
   async getTourById(id) {
     try {
       const response = await api.get(`/tours/${id}`);

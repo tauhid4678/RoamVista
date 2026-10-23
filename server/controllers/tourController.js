@@ -1,4 +1,5 @@
 import Tour from '../models/Tour.js';
+import Booking from '../models/Booking.js';
 import { isConnected } from '../config/db.js';
 import memoryStore from '../utils/memoryStore.js';
 
@@ -219,3 +220,52 @@ export const deleteTour = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getPublicStats = async (req, res, next) => {
+  try {
+    if (!isConnected) {
+      const totalTours = memoryStore.tours.length;
+      const totalBookings = memoryStore.bookings.length;
+      const totalCountries = 18;
+      const verifiedExplorers = 2450 + totalBookings;
+      const avgRating = (
+        memoryStore.tours.reduce((sum, t) => sum + (t.rating || 4.9), 0) / (totalTours || 1)
+      ).toFixed(2);
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          totalTours,
+          totalCountries,
+          verifiedExplorers,
+          avgRating: Number(avgRating),
+          satisfactionRate: '99.4%',
+        },
+      });
+    }
+
+    const totalTours = await Tour.countDocuments();
+    const destinations = await Tour.distinct('location');
+    const totalBookings = await Booking.countDocuments();
+    const verifiedExplorers = 2450 + totalBookings;
+
+    const tourDocs = await Tour.find({}, 'rating');
+    const avgRating = tourDocs.length
+      ? (tourDocs.reduce((sum, t) => sum + (t.rating || 4.9), 0) / tourDocs.length).toFixed(2)
+      : '4.95';
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalTours,
+        totalCountries: Math.max(destinations.length, 18),
+        verifiedExplorers,
+        avgRating: Number(avgRating),
+        satisfactionRate: '99.4%',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -125,34 +125,45 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Column 1: Expeditions */}
+          {/* Column 1: Expeditions & Experiences */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-4">
-              Explore Journeys
+              Expeditions & Experiences
             </h4>
             <ul className="space-y-2.5 text-xs">
               <li>
-                <Link to="/explore?category=Alpine+Trekking" className="hover:text-primary-400 transition-colors">
+                <Link to="/destinations" className="hover:text-primary-400 transition-colors">
+                  All Destinations
+                </Link>
+              </li>
+              <li>
+                <Link to="/experiences" className="text-accent-400 font-semibold hover:underline flex items-center gap-1">
+                  <span>Curated Experiences</span>
+                  <span>→</span>
+                </Link>
+              </li>
+              <li>
+                <Link to="/experiences?theme=Alpine+Trekking" className="hover:text-primary-400 transition-colors">
                   Alpine Trekking & Peaks
                 </Link>
               </li>
               <li>
-                <Link to="/explore?category=Wildlife+Safari" className="hover:text-primary-400 transition-colors">
+                <Link to="/experiences?theme=Wildlife+Safari" className="hover:text-primary-400 transition-colors">
                   Wildlife Safaris
                 </Link>
               </li>
               <li>
-                <Link to="/explore?category=Cultural+Heritage" className="hover:text-primary-400 transition-colors">
+                <Link to="/experiences?theme=Cultural+Heritage" className="hover:text-primary-400 transition-colors">
                   Cultural Immersions
                 </Link>
               </li>
               <li>
-                <Link to="/explore?category=Coastal+Sailing" className="hover:text-primary-400 transition-colors">
+                <Link to="/experiences?theme=Coastal+Sailing" className="hover:text-primary-400 transition-colors">
                   Coastal & Island Yachting
                 </Link>
               </li>
               <li>
-                <Link to="/explore?category=Arctic+Expedition" className="hover:text-primary-400 transition-colors">
+                <Link to="/experiences?theme=Arctic+Expedition" className="hover:text-primary-400 transition-colors">
                   Polar & Arctic Expeditions
                 </Link>
               </li>

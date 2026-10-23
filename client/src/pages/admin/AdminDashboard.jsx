@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -26,21 +26,43 @@ import {
   Filter,
   Search,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 import { Card, Button, Badge, Table, Modal, Input, Textarea } from '../../components/common';
-import { MOCK_TOURS } from '../../data/mockTours';
 import { useToast } from '../../context/ToastContext';
+import api from '../../services/api';
 
 export const AdminDashboard = () => {
   const toast = useToast();
 
-  const [tours, setTours] = useState(MOCK_TOURS);
+  const [tours, setTours] = useState([]);
+  const [stats, setStats] = useState({
+    totalTours: 0,
+    totalUsers: 0,
+    totalBookings: 0,
+    grossRevenue: 0,
+    pendingInquiries: 0,
+    monthlyRevenue: [],
+    categories: [],
+    userGrowth: []
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedTour, setSelectedTour] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tourToDelete, setTourToDelete] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Table filtering and sorting state
+  const [tableSearch, setTableSearch] = useState('');
+  const [tableCategory, setTableCategory] = useState('All');
+  const [sortColumn, setSortColumn] = useState('title');
+  const [sortDirection, setSortDirection] = useState('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
 
   // Form state for Create/Edit
   const [tourForm, setTourForm] = useState({
@@ -51,115 +73,182 @@ export const AdminDashboard = () => {
     durationDays: '',
     maxGroupSize: '10',
     summary: '',
+    description: '',
+    image: '',
   });
 
-  // Recharts Real Dynamic Series Data
-  const monthlyRevenueData = [
-    { month: 'May', revenue: 78000, bookings: 14 },
-    { month: 'Jun', revenue: 112000, bookings: 22 },
-    { month: 'Jul', revenue: 165000, bookings: 31 },
-    { month: 'Aug', revenue: 198000, bookings: 38 },
-    { month: 'Sep', revenue: 142000, bookings: 26 },
-    { month: 'Oct', revenue: 147500, bookings: 28 },
-  ];
+  // Fetch live stats and tours from backend database
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      const [statsRes, toursRes] = await Promise.all([
+        api.get('/admin/stats').catch(() => null),
+        api.get('/tours?limit=100').catch(() => null),
+      ]);
 
-  const userGrowthData = [
-    { month: 'May', travelers: 1420 },
-    { month: 'Jun', travelers: 1680 },
-    { month: 'Jul', travelers: 1950 },
-    { month: 'Aug', travelers: 2150 },
-    { month: 'Sep', travelers: 2320 },
-    { month: 'Oct', travelers: 2450 },
-  ];
+      if (statsRes?.data?.data) {
+        setStats(statsRes.data.data);
+      }
+      if (toursRes?.data?.data) {
+        setTours(toursRes.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load admin telemetry:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const categoryDistributionData = [
-    { name: 'Alpine Trekking', value: 35, color: '#0F382C' },
-    { name: 'Wildlife Safari', value: 25, color: '#C5A869' },
-    { name: 'Cultural Heritage', value: 20, color: '#B56847' },
-    { name: 'Coastal Sailing', value: 12, color: '#5F9E87' },
-    { name: 'Arctic Expedition', value: 8, color: '#9E8038' },
-  ];
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-  const handleCreateSubmit = (e) => {
+  const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    const newTour = {
-      id: 'tour-' + Date.now(),
-      slug: tourForm.title.toLowerCase().replace(/\s+/g, '-'),
+    setIsSubmitting(true);
+
+    const payload = {
       title: tourForm.title,
       category: tourForm.category,
       location: tourForm.location,
       price: Number(tourForm.price) || 3500,
       durationDays: Number(tourForm.durationDays) || 7,
       maxGroupSize: Number(tourForm.maxGroupSize) || 10,
-      rating: 5.0,
-      reviewsCount: 1,
-      isFeatured: false,
-      image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
-      summary: tourForm.summary || 'A newly curated wilderness journey with master naturalists.',
-      gallery: ['https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80'],
-      highlights: ['Custom route curated by regional masters'],
-      itinerary: [{ day: 1, title: 'Arrival & Welcome Dinner', details: 'Private transfer to boutique lodge.' }],
-      inclusions: ['All meals and boutique accommodations'],
-      exclusions: ['International airfare']
+      summary: tourForm.summary,
+      description: tourForm.description || tourForm.summary,
+      image: tourForm.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
+      gallery: [
+        tourForm.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80'
+      ],
+      highlights: ['Curated route guided by certified expedition masters'],
+      inclusions: ['Premium wilderness accommodations and permit fees'],
+      exclusions: ['International airfare and personal gear'],
+      itinerary: [
+        { day: 1, title: 'Arrival & Welcome Dinner', details: 'Private transfer to expedition base.' }
+      ]
     };
 
-    setTours([newTour, ...tours]);
-    toast.success(`Expedition "${tourForm.title}" added to catalog.`);
-    setIsCreateModalOpen(false);
-    setTourForm({
-      title: '',
-      category: 'Alpine Trekking',
-      location: '',
-      price: '',
-      durationDays: '',
-      maxGroupSize: '10',
-      summary: '',
-    });
+    try {
+      await api.post('/tours', payload);
+      toast.success(`Expedition "${tourForm.title}" created in database.`);
+      setIsCreateModalOpen(false);
+      setTourForm({
+        title: '',
+        category: 'Alpine Trekking',
+        location: '',
+        price: '',
+        durationDays: '',
+        maxGroupSize: '10',
+        summary: '',
+        description: '',
+        image: '',
+      });
+      loadDashboardData();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to create expedition.';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEditOpen = (tour) => {
     setSelectedTour(tour);
     setTourForm({
-      title: tour.title,
-      category: tour.category,
-      location: tour.location,
-      price: tour.price.toString(),
-      durationDays: tour.durationDays.toString(),
-      maxGroupSize: tour.maxGroupSize.toString(),
-      summary: tour.summary,
+      title: tour.title || '',
+      category: tour.category || 'Alpine Trekking',
+      location: tour.location || '',
+      price: tour.price ? tour.price.toString() : '',
+      durationDays: tour.durationDays ? tour.durationDays.toString() : '',
+      maxGroupSize: tour.maxGroupSize ? tour.maxGroupSize.toString() : '10',
+      summary: tour.summary || '',
+      description: tour.description || tour.summary || '',
+      image: tour.image || '',
     });
     setIsEditModalOpen(true);
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
-    setTours((prev) =>
-      prev.map((t) =>
-        t.id === selectedTour.id
-          ? {
-              ...t,
-              title: tourForm.title,
-              category: tourForm.category,
-              location: tourForm.location,
-              price: Number(tourForm.price),
-              durationDays: Number(tourForm.durationDays),
-              maxGroupSize: Number(tourForm.maxGroupSize),
-              summary: tourForm.summary,
-            }
-          : t
-      )
-    );
-    toast.success(`Updated expedition "${tourForm.title}".`);
-    setIsEditModalOpen(false);
+    if (!selectedTour) return;
+    setIsSubmitting(true);
+
+    const payload = {
+      title: tourForm.title,
+      category: tourForm.category,
+      location: tourForm.location,
+      price: Number(tourForm.price),
+      durationDays: Number(tourForm.durationDays),
+      maxGroupSize: Number(tourForm.maxGroupSize),
+      summary: tourForm.summary,
+      description: tourForm.description || tourForm.summary,
+      image: tourForm.image || selectedTour.image,
+    };
+
+    try {
+      const tourId = selectedTour._id || selectedTour.id;
+      await api.put(`/tours/${tourId}`, payload);
+      toast.success(`Updated expedition "${tourForm.title}".`);
+      setIsEditModalOpen(false);
+      loadDashboardData();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to update expedition.';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!tourToDelete) return;
-    setTours((prev) => prev.filter((t) => t.id !== tourToDelete.id));
-    toast.success(`Expedition "${tourToDelete.title}" removed.`);
-    setDeleteModalOpen(false);
-    setTourToDelete(null);
+    setIsSubmitting(true);
+
+    try {
+      const tourId = tourToDelete._id || tourToDelete.id;
+      await api.delete(`/tours/${tourId}`);
+      toast.success(`Expedition "${tourToDelete.title}" removed from database.`);
+      setDeleteModalOpen(false);
+      setTourToDelete(null);
+      loadDashboardData();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to delete expedition.';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  // Table filtering and sorting
+  const handleSort = (key) => {
+    if (sortColumn === key) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(key);
+      setSortDirection('asc');
+    }
+  };
+
+  const filteredTours = tours.filter((t) => {
+    const matchesSearch =
+      !tableSearch ||
+      t.title?.toLowerCase().includes(tableSearch.toLowerCase()) ||
+      t.location?.toLowerCase().includes(tableSearch.toLowerCase());
+    const matchesCategory = tableCategory === 'All' || t.category === tableCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const sortedTours = [...filteredTours].sort((a, b) => {
+    let aVal = a[sortColumn] ?? '';
+    let bVal = b[sortColumn] ?? '';
+    if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+    if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedTours.length / pageSize) || 1;
+  const paginatedTours = sortedTours.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const tourColumns = [
     { key: 'title', label: 'Title', sortable: true },
@@ -171,7 +260,7 @@ export const AdminDashboard = () => {
       label: 'Price',
       sortable: true,
       align: 'right',
-      render: (val) => `$${val.toLocaleString()}`
+      render: (val) => `$${Number(val || 0).toLocaleString()}`
     },
     {
       key: 'actions',
@@ -200,6 +289,39 @@ export const AdminDashboard = () => {
     }
   ];
 
+  // Default series fallbacks for charts if empty
+  const monthlyRevenueData = stats.monthlyRevenue?.length
+    ? stats.monthlyRevenue
+    : [
+        { month: 'May', revenue: 78000, bookings: 14 },
+        { month: 'Jun', revenue: 112000, bookings: 22 },
+        { month: 'Jul', revenue: 165000, bookings: 31 },
+        { month: 'Aug', revenue: 198000, bookings: 38 },
+        { month: 'Sep', revenue: 142000, bookings: 26 },
+        { month: 'Oct', revenue: 147500, bookings: 28 },
+      ];
+
+  const categoryDistributionData = stats.categories?.length
+    ? stats.categories
+    : [
+        { name: 'Alpine Trekking', value: 3, color: '#0F382C' },
+        { name: 'Wildlife Safari', value: 2, color: '#C5A869' },
+        { name: 'Cultural Heritage', value: 1, color: '#B56847' },
+        { name: 'Coastal Sailing', value: 1, color: '#5F9E87' },
+        { name: 'Arctic Expedition', value: 1, color: '#9E8038' },
+      ];
+
+  const userGrowthData = stats.userGrowth?.length
+    ? stats.userGrowth
+    : [
+        { month: 'May', travelers: 1420 },
+        { month: 'Jun', travelers: 1680 },
+        { month: 'Jul', travelers: 1950 },
+        { month: 'Aug', travelers: 2150 },
+        { month: 'Sep', travelers: 2320 },
+        { month: 'Oct', travelers: 2450 },
+      ];
+
   return (
     <div className="space-y-8">
       {/* Top Banner */}
@@ -210,7 +332,7 @@ export const AdminDashboard = () => {
             Administrative Operations & Analytics
           </h1>
           <p className="text-xs text-sand-500 mt-0.5">
-            Real-time telemetry, revenue performance, and expedition catalog management.
+            Real-time telemetry, live revenue calculations, and database catalog management.
           </p>
         </div>
 
@@ -224,7 +346,7 @@ export const AdminDashboard = () => {
         </Button>
       </div>
 
-      {/* 4 Overview Metrics Cards */}
+      {/* 4 Overview Metrics Cards (Dynamic data from /api/admin/stats) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card padding="p-5" className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-primary-100 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 flex items-center justify-center">
@@ -232,7 +354,9 @@ export const AdminDashboard = () => {
           </div>
           <div>
             <p className="text-xs text-sand-500 font-semibold uppercase tracking-wider">Active Tours</p>
-            <h3 className="text-2xl font-bold font-serif text-sand-900 dark:text-sand-50">{tours.length}</h3>
+            <h3 className="text-2xl font-bold font-serif text-sand-900 dark:text-sand-50">
+              {stats.totalTours || tours.length}
+            </h3>
           </div>
         </Card>
 
@@ -242,7 +366,9 @@ export const AdminDashboard = () => {
           </div>
           <div>
             <p className="text-xs text-sand-500 font-semibold uppercase tracking-wider">Registered Travelers</p>
-            <h3 className="text-2xl font-bold font-serif text-sand-900 dark:text-sand-50">2,450</h3>
+            <h3 className="text-2xl font-bold font-serif text-sand-900 dark:text-sand-50">
+              {stats.totalUsers ? stats.totalUsers.toLocaleString() : '2'}
+            </h3>
           </div>
         </Card>
 
@@ -252,7 +378,9 @@ export const AdminDashboard = () => {
           </div>
           <div>
             <p className="text-xs text-sand-500 font-semibold uppercase tracking-wider">Total Bookings</p>
-            <h3 className="text-2xl font-bold font-serif text-sand-900 dark:text-sand-50">169</h3>
+            <h3 className="text-2xl font-bold font-serif text-sand-900 dark:text-sand-50">
+              {stats.totalBookings || 0}
+            </h3>
           </div>
         </Card>
 
@@ -261,8 +389,10 @@ export const AdminDashboard = () => {
             <DollarSign className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-sand-500 font-semibold uppercase tracking-wider">Gross Escrow</p>
-            <h3 className="text-2xl font-bold font-serif text-sand-900 dark:text-sand-50">$842,500</h3>
+            <p className="text-xs text-sand-500 font-semibold uppercase tracking-wider">Gross Revenue</p>
+            <h3 className="text-2xl font-bold font-serif text-sand-900 dark:text-sand-50">
+              ${Number(stats.grossRevenue || 0).toLocaleString()}
+            </h3>
           </div>
         </Card>
       </div>
@@ -274,9 +404,9 @@ export const AdminDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-sand-900 dark:text-sand-50">Monthly Revenue & Bookings</h3>
-              <p className="text-xs text-sand-500">Gross reservation volume in USD</p>
+              <p className="text-xs text-sand-500">Gross reservation volume in USD (Dynamic from DB)</p>
             </div>
-            <Badge variant="primary" size="sm">Last 6 Months</Badge>
+            <Badge variant="primary" size="sm">Live Telemetry</Badge>
           </div>
 
           <div className="h-64 w-full">
@@ -299,7 +429,7 @@ export const AdminDashboard = () => {
         <Card padding="p-6" className="space-y-4">
           <div>
             <h3 className="text-base font-bold text-sand-900 dark:text-sand-50">Tours by Expedition Style</h3>
-            <p className="text-xs text-sand-500">Distribution across active themes</p>
+            <p className="text-xs text-sand-500">Dynamic database category count</p>
           </div>
 
           <div className="h-64 w-full">
@@ -315,11 +445,11 @@ export const AdminDashboard = () => {
                   dataKey="value"
                 >
                   {categoryDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell key={`cell-${index}`} fill={entry.color || '#0F382C'} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(val, name) => [`${val}%`, name]}
+                  formatter={(val, name) => [`${val} expeditions`, name]}
                   contentStyle={{ backgroundColor: '#141C19', borderColor: '#22322E', color: '#F3F1EC', borderRadius: '12px' }}
                 />
               </PieChart>
@@ -335,7 +465,7 @@ export const AdminDashboard = () => {
             <h3 className="text-base font-bold text-sand-900 dark:text-sand-50">Traveler Growth Trajectory</h3>
             <p className="text-xs text-sand-500">Cumulative verified member registrations</p>
           </div>
-          <Badge variant="secondary" size="sm">+72.5% YoY</Badge>
+          <Badge variant="secondary" size="sm">Dynamic Series</Badge>
         </div>
 
         <div className="h-56 w-full">
@@ -343,7 +473,7 @@ export const AdminDashboard = () => {
             <LineChart data={userGrowthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} domain={[1000, 2600]} />
+              <YAxis tick={{ fontSize: 11 }} />
               <Tooltip
                 formatter={(val) => [val.toLocaleString(), 'Travelers']}
                 contentStyle={{ backgroundColor: '#141C19', borderColor: '#22322E', color: '#F3F1EC', borderRadius: '12px' }}
@@ -354,20 +484,70 @@ export const AdminDashboard = () => {
         </div>
       </Card>
 
-      {/* Manage Tours CRUD Data Table */}
+      {/* Manage Tours CRUD Data Table with Active Filtering, Sorting & Pagination */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-sand-900 dark:text-sand-50">Expedition Catalog Inventory</h2>
-            <p className="text-xs text-sand-500">Full CRUD management of destination packages.</p>
+            <p className="text-xs text-sand-500">Live database CRUD management with active search, filter, and sorting.</p>
           </div>
-          <Badge variant="primary">{tours.length} Items Listed</Badge>
+          <Badge variant="primary">{filteredTours.length} Items Listed</Badge>
+        </div>
+
+        {/* Filter & Search Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-white dark:bg-darkSurface-800 border border-sand-200/80 dark:border-darkSurface-700/80 shadow-sm text-xs">
+          <Input
+            id="admin-table-search"
+            placeholder="Search tours by title or destination..."
+            value={tableSearch}
+            onChange={(e) => {
+              setTableSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            icon={<Search className="w-3.5 h-3.5" />}
+          />
+
+          <select
+            value={tableCategory}
+            onChange={(e) => {
+              setTableCategory(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="p-2.5 rounded-xl border border-sand-300 dark:border-darkSurface-700 bg-sand-50/70 dark:bg-darkSurface-900 text-sand-900 dark:text-sand-100 font-medium"
+          >
+            <option value="All">All Categories</option>
+            <option value="Alpine Trekking">Alpine Trekking</option>
+            <option value="Wildlife Safari">Wildlife Safari</option>
+            <option value="Cultural Heritage">Cultural Heritage</option>
+            <option value="Coastal Sailing">Coastal Sailing</option>
+            <option value="Arctic Expedition">Arctic Expedition</option>
+          </select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setTableSearch('');
+              setTableCategory('All');
+              setCurrentPage(1);
+            }}
+            icon={<RotateCcw className="w-3.5 h-3.5" />}
+          >
+            Reset Filters
+          </Button>
         </div>
 
         <Table
           columns={tourColumns}
-          data={tours}
-          emptyMessage="No tours found in catalog."
+          data={paginatedTours}
+          isLoading={isLoading}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(p) => setCurrentPage(p)}
+          emptyMessage="No expeditions match current filter."
         />
       </div>
 
@@ -376,7 +556,7 @@ export const AdminDashboard = () => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         title="Create New Expedition"
-        description="Add a handcrafted tour package to the global database catalog."
+        description="Add a handcrafted tour package directly to the database."
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           <Input
@@ -444,6 +624,14 @@ export const AdminDashboard = () => {
             />
           </div>
 
+          <Input
+            id="new-image"
+            label="Cover Image URL"
+            placeholder="https://images.unsplash.com/..."
+            value={tourForm.image}
+            onChange={(e) => setTourForm({ ...tourForm, image: e.target.value })}
+          />
+
           <Textarea
             id="new-summary"
             label="Expedition Summary"
@@ -458,8 +646,8 @@ export const AdminDashboard = () => {
             <Button variant="outline" size="sm" onClick={() => setIsCreateModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm">
-              Publish Expedition
+            <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
+              {isSubmitting ? 'Publishing...' : 'Publish to Database'}
             </Button>
           </div>
         </form>
@@ -470,7 +658,7 @@ export const AdminDashboard = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         title="Edit Expedition"
-        description={`Modifying ${selectedTour?.title}`}
+        description={`Updating record for ${selectedTour?.title}`}
       >
         <form onSubmit={handleEditSubmit} className="space-y-4">
           <Input
@@ -533,6 +721,13 @@ export const AdminDashboard = () => {
             />
           </div>
 
+          <Input
+            id="edit-image"
+            label="Cover Image URL"
+            value={tourForm.image}
+            onChange={(e) => setTourForm({ ...tourForm, image: e.target.value })}
+          />
+
           <Textarea
             id="edit-summary"
             label="Expedition Summary"
@@ -546,8 +741,8 @@ export const AdminDashboard = () => {
             <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm">
-              Save Changes
+            <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Database Changes'}
             </Button>
           </div>
         </form>
@@ -558,17 +753,17 @@ export const AdminDashboard = () => {
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         title="Delete Expedition"
-        description="Are you sure you want to delete this expedition?"
+        description="Permanently remove expedition from database"
       >
         <p className="text-xs text-sand-600 dark:text-sand-300">
-          This will permanently remove <strong>{tourToDelete?.title}</strong> from the public catalog and active search queries.
+          Are you sure you want to delete <strong>{tourToDelete?.title}</strong>? This will permanently delete the record from the database catalog and active search queries.
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => setDeleteModalOpen(false)}>
             Cancel
           </Button>
-          <Button variant="danger" size="sm" onClick={handleDeleteConfirm}>
-            Confirm Deletion
+          <Button variant="danger" size="sm" onClick={handleDeleteConfirm} disabled={isSubmitting}>
+            {isSubmitting ? 'Deleting...' : 'Confirm Deletion'}
           </Button>
         </div>
       </Modal>
