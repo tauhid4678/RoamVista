@@ -176,13 +176,13 @@ export const Home = () => {
           }}
         >
           {/* Background Cinematic Motion Video */}
-          <div className="absolute -inset-10 z-0 overflow-hidden">
+          <div className="absolute -inset-10 z-0 overflow-hidden bg-[#0C1210]">
             <video
               autoPlay
               loop
               muted
               playsInline
-              poster="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2200&q=85"
+              preload="auto"
               className="w-full h-full object-cover scale-110 pointer-events-none"
               style={{
                 transform: `translate3d(${-heroTilt.y * 3.5}px, ${heroTilt.x * 3.5}px, -40px)`,
