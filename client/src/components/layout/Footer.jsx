@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Compass,
   Mail,
@@ -21,6 +21,9 @@ export const Footer = () => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
   const toast = useToast();
+  const location = useLocation();
+
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/signup';
 
   const handleNewsletter = (e) => {
     e.preventDefault();
@@ -36,7 +39,8 @@ export const Footer = () => {
   return (
     <footer className="bg-neutral-900 text-neutral-300 border-t border-neutral-800 transition-colors duration-200">
       {/* Top Banner / Trust Badges */}
-      <div className="border-b border-neutral-800/80 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      {!isAuthPage && (
+        <div className="border-b border-neutral-800/80 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-4 p-4 rounded-2xl bg-neutral-800/40 border border-neutral-800">
             <div className="w-12 h-12 rounded-xl bg-primary-600/20 text-primary-400 flex items-center justify-center shrink-0">
@@ -69,6 +73,7 @@ export const Footer = () => {
           </div>
         </div>
       </div>
+    )}
 
       {/* Main Footer Links */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
