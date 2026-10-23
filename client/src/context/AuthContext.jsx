@@ -70,6 +70,9 @@ export const AuthProvider = ({ children }) => {
   const signInWithGoogle = async () => {
     setLoading(true);
     try {
+      if (!auth || !googleProvider) {
+        throw new Error('Firebase Authentication is not configured.');
+      }
       const result = await signInWithPopup(auth, googleProvider);
       const synced = await syncWithBackend(result.user);
       return synced;
@@ -92,10 +95,12 @@ export const AuthProvider = ({ children }) => {
         setToken(response.data.token);
 
         // Also sign in to Firebase in background if possible
-        try {
-          await signInWithEmailAndPassword(auth, email, password);
-        } catch {
-          // Ignore if user only exists in MongoDB
+        if (auth) {
+          try {
+            await signInWithEmailAndPassword(auth, email, password);
+          } catch {
+            // Ignore if user only exists in MongoDB
+          }
         }
 
         return { success: true, user: response.data.user };
@@ -103,13 +108,16 @@ export const AuthProvider = ({ children }) => {
       throw new Error(response.data?.message || 'Login failed');
     } catch (err) {
       // 2. If backend failed, try Firebase directly
-      try {
-        const fbResult = await signInWithEmailAndPassword(auth, email, password);
-        const synced = await syncWithBackend(fbResult.user);
-        return synced;
-      } catch (fbErr) {
-        throw new Error(err.response?.data?.message || fbErr.message || 'Invalid credentials');
+      if (auth) {
+        try {
+          const fbResult = await signInWithEmailAndPassword(auth, email, password);
+          const synced = await syncWithBackend(fbResult.user);
+          return synced;
+        } catch (fbErr) {
+          throw new Error(err.response?.data?.message || fbErr.message || 'Invalid credentials');
+        }
       }
+      throw new Error(err.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
     }
