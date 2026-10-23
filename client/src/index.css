@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #0F382C;
+    --color-accent: #C5A869;
+    --color-surface-light: #FDFBF7;
+    --color-surface-dark: #0C1210;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  body {
+    overflow-x: hidden;
+    background-color: #FDFBF7;
+    color: #1A201E;
+  }
+
+  .dark body {
+    background-color: #0C1210;
+    color: #F3F1EC;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Restrained Luxury Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #DDD8CE;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #22322E;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B8B2A5;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #344943;
+}
+
+/* Subtle Shimmer for Skeleton Loaders */
+@keyframes editorialShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(221, 216, 206, 0.4) 0%,
+    rgba(247, 244, 238, 0.8) 50%,
+    rgba(221, 216, 206, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: editorialShimmer 1.8s infinite ease-in-out;
+}
+
+.dark .animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(20, 28, 25, 0.5) 0%,
+    rgba(34, 50, 46, 0.8) 50%,
+    rgba(20, 28, 25, 0.5) 100%
+  );
+  background-size: 200% 100%;
+  animation: editorialShimmer 1.8s infinite ease-in-out;
+}
+
+/* Editorial Glass Header */
+.editorial-glass {
+  background: rgba(253, 251, 247, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.dark .editorial-glass {
+  background: rgba(12, 18, 16, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
